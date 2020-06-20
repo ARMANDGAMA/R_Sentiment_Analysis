@@ -1,0 +1,130 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+install.packages("SnowballC")
+install.packages("tm")
+install.packages("twitteR")
+install.packages("syuzhet")
+```
+```{r}
+#Carga de los paquetes
+library(data.table)
+library(sentimentr)
+library(dplyr)
+library(stringr)
+library(SnowballC)
+library(tm)
+library(twitteR)
+library(syuzhet)
+library(stringi)
+```
+```{r}
+#Importo el csv
+df <- read.csv(file="C:/Users/armando.garcia/OneDrive - OPERADORA DE HOTELES TAFER, SA. DE CV/Qlikview/5-Conversiones/Clarabridge/CSV/Clarabridge.csv", sep = ",", stringsAsFactors = FALSE, header = TRUE, encoding = "UTF-8")
+df <- df %>%
+  mutate(
+    Respuesta = stri_trans_general(Respuesta, "Latin-ASCII")
+  )
+
+#Cambio el formato a UTF-8-BOM
+#colnames(df)[1] <- gsub('^...','',colnames(df)[1])
+df
+```
+
+```{r}
+#Filtra comentarios que contengan 'Comment'
+ComCom <- df  %>%
+  select( Llave, Idioma, Pregunta, Respuesta) %>%
+  filter(str_detect(Pregunta,"Comment"), Idioma == "Spanish")
+#Filtra comentarios que contengan 'Explained'
+ExpCom <- df %>%
+   select( Llave, Idioma, Pregunta, Respuesta) %>%
+   filter(str_detect(Pregunta,"Explained"), Idioma == "Spanish")
+#Concatena los df
+df <- rbind(ComCom, ExpCom)
+
+#vector de palabras
+palabra.df <- as.vector(df$Respuesta)
+
+#Función de sentimiento
+emocion.df <- get_nrc_sentiment(char_v = palabra.df, language = "spanish")
+
+#Unimos el vector de sentimiento
+emocion.df2 <- cbind(df, emocion.df)
+head(emocion.df2)
+print(emocion.df2)
+
+#Escribe en un csv
+write.csv(emocion.df2, "C:/Users/armando.garcia/OneDrive - OPERADORA DE HOTELES TAFER, SA. DE CV/Qlikview/5-Conversiones/Clarabridge/CSV/Clarabridge_SentimentEsp.csv")
+```
+```{r}
+#Transponer emoción
+
+emocion.df3 <- data.frame(t(emocion.df))
+
+#Suma todos los puntajes de emoción
+emocion.df3 <- data.frame(rowSums(emocion.df3))
+
+#Renombrar columna como cuenta
+names(emocion.df3)[1] <- "Cuenta"
+
+#Agregamos el nombre de las emociones
+emocion.df3 <- cbind("sentimiento" = rownames(emocion.df3), emocion.df3)
+
+#Eliminar el nombre de las filas
+rownames(emocion.df3) <- NULL
+
+print(emocion.df3)
+```
+```{r}
+library(ggplot2)
+
+#Primer gráfico: se detallaran las 8 emociones con sus puntajes respectivos
+sentimientos1 <- ggplot(emocion.df3[1:8,],
+              aes(x = sentimiento,
+                  y = Cuenta, fill = sentimiento)) + 
+  geom_bar(stat = "identity") +
+  labs(title = "Análisis de sentimiento \n Ocho emociones",
+       x = "Sentimiento", y = "Frecuencia") +
+  geom_text(aes(label = Cuenta),
+            vjust = 1.5, color = "black",
+            size = 5) +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text = element_text(size=12),
+        axis.title = element_text(size=14,face = "bold"),
+        title = element_text(size=20,face = "bold"),
+        legend.position = "none")
+print(sentimientos1)
+```
+```{r}
+#Segundo gráfico: se detallan los puntajes para las valoraciones
+#positiva y negativa
+sentimientos2 <- ggplot(emocion.df3[9:10,], 
+                       aes(x = sentimiento,
+                           y = Cuenta, fill = sentimiento)) + 
+  geom_bar(stat = "identity") +
+  labs(title = "Análisis de sentimiento \n Valoración positiva o negativa", 
+       x = "Sentimiento", y = "Frecuencia") +
+  geom_text(aes(label = Cuenta),
+            vjust = 1.5, color = "black",
+            size = 5) +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text = element_text(size=12),
+        axis.title = element_text(size=14,face = "bold"),
+        title = element_text(size=20,face = "bold"),
+        legend.position = "none")
+print(sentimientos2)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

@@ -1,0 +1,43 @@
+---
+title: "Sentiment Analysis"
+output: html_notebook
+---
+
+```{r}
+#Extraigo librerías necesarias
+library(sentimentr)
+library(dplyr)
+library(stringr)
+```
+```{r}
+#Importo el csv
+df <- read.csv(file="C:/Qlikview/5-Conversiones/Clarabridge/CSV/Clarabridge_Comentarios.csv", sep = ",", stringsAsFactors = FALSE)
+#Cambio el formato a UTF-8-BOM
+colnames(df)[1] <- gsub('^...','',colnames(df)[1])
+
+#Filtra comentarios que contengan 'Comment'
+ComCom <- df %>% 
+  filter(str_detect(Pregunta,"Comment"))
+#Filtra comentarios que contengan 'Explained'
+ExpCom <- df %>% 
+  filter(str_detect(Pregunta,"Explained"))
+#Concatena los df
+df <- rbind(ComCom, ExpCom)
+
+#Función de sentimiento agrupado por el contador, la pregunta y la respuesta
+df <- ( out <- with(
+  df,
+  sentiment_by(
+    get_sentences(Respuesta),
+    list(Contador, Pregunta, Respuesta)
+  )
+))
+
+#Escribe en un csv
+write.csv(df, "C:/Qlikview/5-Conversiones/Clarabridge/CSV/Clarabridge_Sentiment.csv")
+```
+
+
+
+
+
